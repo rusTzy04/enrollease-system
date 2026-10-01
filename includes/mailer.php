@@ -3,6 +3,12 @@ require_once __DIR__ . '/../config/mail.php';
 
 function sendEmail(PDO $pdo, string $toEmail, string $subject, string $bodyHtml): bool
 {
+    if (BREVO_API_KEY !== '') {
+        $ok = sendViaBrevo($toEmail, $subject, $bodyHtml);
+        logEmailAttempt($pdo, $toEmail, $subject, $bodyHtml, $ok ? 'Sent' : 'Failed');
+        return $ok;
+    }
+
     $vendorAutoload = __DIR__ . '/../vendor/autoload.php';
 
     if (!file_exists($vendorAutoload)) {
@@ -37,6 +43,34 @@ function sendEmail(PDO $pdo, string $toEmail, string $subject, string $bodyHtml)
         logEmailAttempt($pdo, $toEmail, $subject, $bodyHtml, 'Failed');
         return false;
     }
+}
+
+/** Sends through Brevo's HTTPS API (port 443, which Railway does not block). */
+function sendViaBrevo(string $toEmail, string $subject, string $bodyHtml): bool
+{
+    $ch = curl_init('https://api.brevo.com/v3/smtp/email');
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => ['api-key: ' . BREVO_API_KEY, 'Content-Type: application/json', 'Accept: application/json'],
+        CURLOPT_POSTFIELDS => json_encode([
+            'sender' => ['name' => SMTP_FROM_NAME, 'email' => SMTP_FROM_EMAIL],
+            'to' => [['email' => $toEmail]],
+            'subject' => $subject,
+            'htmlContent' => $bodyHtml,
+        ]),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 20,
+    ]);
+    $response = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    if ($status >= 200 && $status < 300) {
+        return true;
+    }
+    error_log('Brevo send failed (' . $status . '): ' . ($response === false ? $curlError : $response));
+    return false;
 }
 
 function logEmailAttempt(PDO $pdo, string $to, string $subject, string $body, string $status): void
