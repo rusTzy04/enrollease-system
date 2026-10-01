@@ -53,6 +53,7 @@ RewriteRule ^config/ error-redirect.php [L]
 RewriteRule ^includes/ error-redirect.php [L]
 RewriteRule ^database/ error-redirect.php [L]
 RewriteRule ^docker/ error-redirect.php [L]
+RewriteRule ^(Dockerfile|railway\.json|composer\.(json|lock))$ error-redirect.php [L]
 RewriteRule ^\.git error-redirect.php [L]
 
 <FilesMatch "\.(sql|env|log|md)$">
