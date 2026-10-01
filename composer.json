@@ -1,0 +1,7 @@
+{
+    "name": "school/enrollment-system",
+    "description": "Online Enrollment System (PHP, MySQL/phpMyAdmin, Laragon)",
+    "require": {
+        "phpmailer/phpmailer": "^7.1"
+    }
+}

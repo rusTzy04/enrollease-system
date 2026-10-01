@@ -1,0 +1,1 @@
+<footer class="public-footer">&copy; <?= date('Y') ?> <?= e(SITE_NAME) ?>. All rights reserved.</footer>

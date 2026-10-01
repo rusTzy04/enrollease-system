@@ -1,0 +1,6 @@
+# Uploaded requirement documents must never be executable.
+# Even if a malicious file is uploaded, the server will refuse to run it as PHP.
+<FilesMatch "\.(php|php3|php4|php5|phtml|pl|py|cgi|asp|aspx|exe|sh)$">
+    Require all denied
+</FilesMatch>
+Options -Indexes -ExecCGI

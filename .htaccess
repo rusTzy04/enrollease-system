@@ -1,0 +1,77 @@
+RewriteEngine On
+
+# Behind Railway's proxy the original scheme arrives in X-Forwarded-Proto
+SetEnvIf X-Forwarded-Proto "^https$" HTTPS=on
+
+# ---------------------------------------------------------------
+# 0) Instead of a raw server error page, quietly send people to their
+#    dashboard (or the homepage, if logged out) on a bad/incomplete URL.
+#    Uses relative rewrite targets (not ErrorDocument) so this works
+#    correctly whether the project sits at the domain root or in a
+#    subfolder like /enrollment-system/.
+# ---------------------------------------------------------------
+
+# A) Someone browsed straight into a role folder with nothing after it
+#    (e.g. /student/ or /admin) — those folders have no index.php on purpose.
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteCond %{REQUEST_FILENAME}/index.php !-f
+RewriteRule ^ error-redirect.php [L]
+
+# B) The path doesn't match any real file, any real directory, or any
+#    known clean-URL route (see section 1 below) — a fully bogus/typo'd path.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}\.php !-f
+RewriteRule ^ error-redirect.php [L]
+
+# ---------------------------------------------------------------
+# 1) Hide .php extension everywhere
+#    /auth/login.php  ->  /auth/login
+#    /student/dashboard.php -> /student/dashboard
+# ---------------------------------------------------------------
+
+# If someone types the .php URL directly, redirect (301) to the clean version
+RewriteCond %{THE_REQUEST} \s/+(.+?)\.php[\s?] [NC]
+RewriteRule ^ /%1 [R=301,L]
+
+# Internally rewrite the clean URL back to the real .php file
+RewriteCond %{REQUEST_FILENAME}\.php -f
+RewriteRule ^(.*?)/?$ $1.php [L]
+
+# ---------------------------------------------------------------
+# 2) Treat /index (and /) as the homepage, and hide it from the address bar
+#    Visiting the bare domain never shows "index.php" or "index.html"
+# ---------------------------------------------------------------
+DirectoryIndex index.php
+RewriteCond %{THE_REQUEST} \s/+index(\.php)?[\s?] [NC]
+RewriteRule ^ /? [R=301,L]
+
+# ---------------------------------------------------------------
+# 3) Block direct web access to sensitive folders/files
+# ---------------------------------------------------------------
+RewriteRule ^config/ error-redirect.php [L]
+RewriteRule ^includes/ error-redirect.php [L]
+RewriteRule ^database/ error-redirect.php [L]
+RewriteRule ^\.git error-redirect.php [L]
+
+<FilesMatch "\.(sql|env|log|md)$">
+    Require all denied
+</FilesMatch>
+
+# ---------------------------------------------------------------
+# 4) Security headers
+# ---------------------------------------------------------------
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    # Uncomment once you're serving over HTTPS in production:
+    # Header set Strict-Transport-Security "max-age=63072000; includeSubDomains"
+</IfModule>
+
+# Never show directory listings
+Options -Indexes
+
+# Hide server signature
+ServerSignature Off
