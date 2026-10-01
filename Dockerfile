@@ -7,6 +7,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends unzip libzip-de
     && sed -ri 's!AllowOverride None!AllowOverride All!g' /etc/apache2/apache2.conf \
     && rm -rf /var/lib/apt/lists/*
 
+# Production PHP settings: errors go to the log, never to the browser
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
